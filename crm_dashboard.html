@@ -875,6 +875,8 @@ function applyFilters() {
   const phone  = document.getElementById('f-phone').value;
   const email  = document.getElementById('f-email').value;
 
+  console.log('[applyFilters] START - COMPANIES.length:', COMPANIES.length, 'Filters:', {search:search||'(none)', tier:tier||'(none)', stage:stage||'(none)', judet:judet||'(none)', phone:phone||'(none)', email:email||'(none)'});
+
   tableState.filtered = COMPANIES.filter(c => {
     const crm = getCRM(c.id);
     if (tier   && c.tier != tier) return false;
@@ -892,6 +894,8 @@ function applyFilters() {
     return true;
   });
 
+  console.log('[applyFilters] After filter:', tableState.filtered.length, 'companies match');
+
   // Sort
   const s = tableState.sort;
   tableState.filtered.sort((a,b) => {
@@ -902,6 +906,7 @@ function applyFilters() {
 
   tableState.page = 1;
   document.getElementById('filter-count').textContent = tableState.filtered.length.toLocaleString('ro-RO') + ' firme';
+  console.log('[applyFilters] Calling renderTableRows with', tableState.filtered.length, 'rows');
   renderTableRows();
   renderPagination();
 }
