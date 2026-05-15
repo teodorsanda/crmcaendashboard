@@ -880,8 +880,8 @@ function applyFilters() {
     if (tier   && c.tier != tier) return false;
     if (stage  !== '' && crm.stage != stage) return false;
     if (judet  && c.j !== judet) return false;
-    if (phone==='1' && !c.tel.trim()) return false;
-    if (phone==='0' && c.tel.trim()) return false;
+    if (phone==='1' && (!c.tel || !c.tel.trim())) return false;
+    if (phone==='0' && c.tel && c.tel.trim()) return false;
     if (email==='custom' && c.et!=='custom_domain') return false;
     if (email==='free'   && c.et!=='free_email')    return false;
     if (email==='no'     && c.et!=='no_email')      return false;
