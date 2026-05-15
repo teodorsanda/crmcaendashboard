@@ -585,6 +585,24 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
         <div class="modal-section-title">Note</div>
         <textarea class="notes" id="m-notes" placeholder="Note despre firmă, persoană de contact, observații…" oninput="autoSaveNotes()"></textarea>
       </div>
+      <!-- Email Templates -->
+      <div class="modal-section">
+        <div class="modal-section-title">📧 Draft Email</div>
+        <select id="m-email-select" onchange="updateEmailPreview()" style="width:100%;margin-bottom:8px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+          <option value="">Selectează template...</option>
+        </select>
+        <textarea id="m-email-preview" readonly style="width:100%;height:200px;padding:8px;border:1px solid #ddd;border-radius:4px;font-family:monospace;font-size:12px;background:#f9f9f9;"></textarea>
+        <button class="btn btn-sm btn-primary" onclick="copyEmailTemplate()" style="margin-top:8px;width:100%;">📋 Copy to Clipboard</button>
+      </div>
+      <!-- Outreach Script -->
+      <div class="modal-section">
+        <div class="modal-section-title">💬 Outreach Script</div>
+        <select id="m-script-select" onchange="updateScriptPreview()" style="width:100%;margin-bottom:8px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+          <option value="">Selectează script...</option>
+        </select>
+        <textarea id="m-script-preview" readonly style="width:100%;height:200px;padding:8px;border:1px solid #ddd;border-radius:4px;font-family:monospace;font-size:12px;background:#f9f9f9;"></textarea>
+        <button class="btn btn-sm btn-primary" onclick="copyOutreachScript()" style="margin-top:8px;width:100%;">📋 Copy to Clipboard</button>
+      </div>
     </div>
     <div class="modal-footer">
       <div style="display:flex;gap:8px" id="m-footer-left">
@@ -826,6 +844,172 @@ Propunem o întâlnire de 45 minute, online sau față în față, să vă preze
     ]
   }
 };
+
+const EMAILS = {
+  1:{
+    label:'Tier 1 — Email Templates',
+    templates:[
+      {
+        name:'Initial Contact',
+        template:`Bună ziua,
+
+Mă numesc {{your_name}} și lucrez pentru o agenție de digital marketing.
+
+Am observat că {{company_name}} din {{location}} nu are momentan o prezență puternică online și am gândit că ar fi bine să vă prezint soluții care ar putea aduce clienți noi direct.
+
+Compania dvs. are potențial mare în {{county}}, și putem ajuta.
+
+Aveți 2 minute pentru o scurtă discuție?
+
+Îmi puteți suna la {{phone}} sau mă puteți contacta la {{email}}.
+
+Cu plăcere,
+{{your_name}}`
+      },
+      {
+        name:'Follow-up',
+        template:`Bună {{contact_name}},
+
+Am trimis mai devreme o propunere pentru {{company_name}}.
+
+Astazi am vrut să verific dacă ati avut ocazia sa o cititi. Avem disponibilitate pentru o scurtă întâlnire acestă săptămână.
+
+Ma puteti contacta la {{phone}} sau {{email}}.
+
+Multumesc,
+{{your_name}}`
+      },
+      {
+        name:'Final Pitch',
+        template:`Bună {{contact_name}},
+
+In perioada următoare, {{company_name}} are oportunitatea să se poziționeze ca lider digital în {{location}}.
+
+Aceasta e momentul optim — înainte ca concurenții să se mute online.
+
+Vă propun o întâlnire rapidă (30 min) pentru a discuta o strategie personalizată.
+
+Website: {{website}}
+Contact: {{phone}} / {{email}}
+
+Cu plăcere,
+{{your_name}}`
+      }
+    ]
+  },
+  2:{
+    label:'Tier 2 — Email Templates',
+    templates:[
+      {
+        name:'Initial Contact',
+        template:`Bună {{contact_name}},
+
+Lucrez cu companiile de referință din {{county}} pentru transformarea digitală.
+
+{{company_name}} are fundații bune, dar am observat că nu maximizează pe deplin potențialul online.
+
+Am gândul că o consultație rapidă ar putea deschide oportunități noi.
+
+Disponibil: {{phone}} / {{email}}
+
+Multumesc,
+{{your_name}}`
+      },
+      {
+        name:'Follow-up',
+        template:`Bună {{contact_name}},
+
+În ultimele 2-3 ani, companiile din {{county}} care au investi în digital s-au distanțat de competitori.
+
+{{company_name}} are resursele necesare pentru a deveni lider.
+
+Propun o analiză rapidă (audit digital gratuit) ca să vă arătam exact cum.
+
+Cand sunteti disponibil pentru o discuție?
+
+{{phone}} / {{email}}
+
+{{your_name}}`
+      },
+      {
+        name:'Final Pitch',
+        template:`Bună {{contact_name}},
+
+Propunere finală: Audit Digital Complet + Strategie Personalizată pentru {{company_name}}.
+
+Includem:
+• Analiza competiției și SEO din {{location}}
+• Strategie de lead generation
+• Plan de implementare cu garanție
+
+Costul: €2.500 (valabil 14 zile)
+
+Aveți agenda libera pentru o întâlnire în această săptămână?
+
+{{phone}} / {{email}}
+
+{{your_name}}`
+      }
+    ]
+  },
+  3:{
+    label:'Tier 3 — Email Templates',
+    templates:[
+      {
+        name:'Initial Contact',
+        template:`Bună {{contact_name}},
+
+Suntem specialiști în transformarea digitală pentru companii enterprise din {{county}}.
+
+Am lucrat cu lideii din industria dumneavoastră și am observat că {{company_name}} are poziție unică pentru a captura piață în {{location}}.
+
+O discuție strategică (45 min) ar putea deschide oportunități semnificative.
+
+Disponibil oricând.
+
+{{phone}} / {{email}}
+
+{{your_name}}`
+      },
+      {
+        name:'Follow-up',
+        template:`Bună {{contact_name}},
+
+Propunem o analiză digitală strategică pentru {{company_name}}.
+
+Acesta nu e un audit standard — e o consultație 1:1 focusată pe ROI și dominare de piață în {{location}}.
+
+Durata: 45 minute. Legatura: {{phone}} / {{email}}.
+
+Cand va convine în aceasta săptămână?
+
+{{your_name}}`
+      },
+      {
+        name:'Final Pitch',
+        template:`Bună {{contact_name}},
+
+Propunere execuție: Strategie Digitală Totală + Implementare Garantizată pentru {{company_name}}.
+
+Scope complet:
+• Analiza strategică a pieței din {{county}}
+• Plan de dominare digital și lead generation
+• Implementare cu metrici și KPI
+• Review trimestrial și optimizare
+
+Investiție: €12.000 - €25.000 (adaptat nevoilor {{company_name}})
+
+Următorii 90 de zile sunt critici pentru lider. Sunteti gata sa vorbim?
+
+{{phone}} / {{email}}
+
+{{your_name}}`
+      }
+    ]
+  }
+};
+
+let currentModalCompany = null;
 
 // ════ CRM STATE ════
 const CRM_KEY = 'prospectcrm_v2';
@@ -1223,6 +1407,29 @@ function openModal(id) {
     telLink.style.display='none';
   }
 
+  // Set current modal company for email/script templates
+  currentModalCompany = c;
+
+  // Populate email templates dropdown
+  const emailTemplates = getEmailTemplateByTier(c.tier);
+  const emailSelect = document.getElementById('m-email-select');
+  emailSelect.innerHTML = emailTemplates.templates.map((t, i) =>
+    `<option value="${i}">${t.name}</option>`
+  ).join('');
+  emailSelect.value = 0;
+
+  // Populate script dropdown
+  const scriptStages = SCRIPT_DATA[c.tier];
+  const scriptSelect = document.getElementById('m-script-select');
+  scriptSelect.innerHTML = scriptStages.map((s, i) =>
+    `<option value="${i}">${s.stage}</option>`
+  ).join('');
+  scriptSelect.value = 0;
+
+  // Update previews
+  updateEmailPreview();
+  updateScriptPreview();
+
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -1427,6 +1634,89 @@ function toast(msg, dur=2500) {
   el.classList.add('show');
   clearTimeout(toast._t);
   toast._t = setTimeout(()=>el.classList.remove('show'), dur);
+}
+
+// ════ EMAIL & SCRIPT FUNCTIONS ════
+function replaceTokens(template, company) {
+  if (!company) return template;
+  return template
+    .replace(/\{\{company_name\}\}/g, company.n || '')
+    .replace(/\{\{phone\}\}/g, company.tel || '')
+    .replace(/\{\{email\}\}/g, company.em || '')
+    .replace(/\{\{county\}\}/g, company.j || '')
+    .replace(/\{\{website\}\}/g, company.web || '')
+    .replace(/\{\{contact_name\}\}/g, company.ct || '')
+    .replace(/\{\{location\}\}/g, company.loc || '')
+    .replace(/\{\{your_name\}\}/g, 'Your Name');
+}
+
+function getEmailTemplateByTier(tier) {
+  const emailTier = EMAILS[tier];
+  return emailTier ? emailTier.templates : [];
+}
+
+function updateEmailPreview() {
+  const select = document.getElementById('m-email-select');
+  const preview = document.getElementById('m-email-preview');
+  if (!select.value || !currentModalCompany) {
+    preview.value = '';
+    return;
+  }
+  const tier = currentModalCompany.tier || 1;
+  const templates = getEmailTemplateByTier(tier);
+  const template = templates.find(t => t.name === select.value);
+  if (template) {
+    preview.value = replaceTokens(template.template, currentModalCompany);
+  }
+}
+
+function updateScriptPreview() {
+  const select = document.getElementById('m-script-select');
+  const preview = document.getElementById('m-script-preview');
+  if (!select.value || !currentModalCompany) {
+    preview.value = '';
+    return;
+  }
+  const tier = currentModalCompany.tier || 1;
+  const scriptData = SCRIPT_DATA[tier];
+  if (scriptData) {
+    const stage = scriptData.stages.find(s => s.title === select.value);
+    if (stage) {
+      preview.value = replaceTokens(stage.body, currentModalCompany);
+    }
+  }
+}
+
+function copyEmailTemplate() {
+  const preview = document.getElementById('m-email-preview');
+  if (!preview.value) {
+    toast('Selectează un template mai întâi');
+    return;
+  }
+  const blob = new Blob([preview.value], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `email-${currentModalCompany.n}-${new Date().getTime()}.txt`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast('Email copied to clipboard!');
+}
+
+function copyOutreachScript() {
+  const preview = document.getElementById('m-script-preview');
+  if (!preview.value) {
+    toast('Selectează un script mai întâi');
+    return;
+  }
+  const blob = new Blob([preview.value], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `script-${currentModalCompany.n}-${new Date().getTime()}.txt`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast('Script copied to clipboard!');
 }
 
 // ════ INIT ════
