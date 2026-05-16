@@ -381,11 +381,12 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
               <th onclick="sortBy('j')" id="th-j">Județ ↕</th>
               <th>Telefon</th>
               <th>Email</th>
+              <th style="width:130px">Contact</th>
               <th onclick="sortBy('sal')" id="th-sal" style="width:80px">Ang. ↕</th>
               <th onclick="sortBy('ca')" id="th-ca" style="width:90px">CA ↕</th>
               <th style="width:60px">Tier</th>
               <th style="width:100px">Status</th>
-              <th style="width:120px">Acțiuni</th>
+              <th style="width:150px">Acțiuni</th>
             </tr>
           </thead>
           <tbody id="tbl-body"></tbody>
@@ -1116,7 +1117,7 @@ function renderTableRows() {
   const tbody = document.getElementById('tbl-body');
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="tbl-empty">Nicio firmă nu corespunde filtrelor selectate.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="tbl-empty">Nicio firmă nu corespunde filtrelor selectate.</td></tr>';
     return;
   }
 
@@ -1125,13 +1126,15 @@ function renderTableRows() {
     const st  = STAGES[crm.stage];
     const rowN = start+i+1;
     const telHtml = c.tel ? `<a href="tel:${c.tel.replace(/[^0-9+]/g,'')}">${c.tel}</a>` : '<span class="td-muted">—</span>';
-    const emHtml  = c.em  ? `<a href="mailto:${c.em}" title="${c.em}" style="color:var(--accent);text-decoration:none">${c.et==='custom_domain'?'📧 biz':'📧 free'}</a>` : '<span class="td-muted">—</span>';
+    const emHtml  = c.em  ? `<a href="mailto:${c.em}" title="${c.em}" style="color:var(--accent);text-decoration:none;font-size:12px">${c.em.length>28?c.em.slice(0,26)+'…':c.em}</a>` : '<span class="td-muted">—</span>';
+    const ctHtml  = c.ct  ? `<span style="font-size:12px">${esc(c.ct)}</span>` : '<span class="td-muted">—</span>';
     return `<tr>
       <td class="td-muted" style="font-size:11px">${rowN}</td>
       <td><span class="td-name" onclick="openModal(${c.id})" title="${esc(c.n)}">${esc(c.n.length>35?c.n.slice(0,33)+'…':c.n)}</span></td>
       <td class="td-muted">${c.j}</td>
       <td class="td-tel">${telHtml}</td>
       <td>${emHtml}</td>
+      <td>${ctHtml}</td>
       <td class="td-muted" style="text-align:center">${c.sal||'—'}</td>
       <td class="td-muted">${c.cad||'—'}</td>
       <td><span class="badge badge-t${c.tier}">T${c.tier}</span></td>
@@ -1140,7 +1143,10 @@ function renderTableRows() {
       </td>
       <td class="td-actions">
         <button class="btn btn-sm btn-ghost" onclick="openModal(${c.id})" title="Deschide">👁</button>
-        ${c.tel?`<a class="btn btn-sm btn-ghost" href="tel:${c.tel.replace(/[^0-9+]/g,'')}" title="Sună">📞</a>`:''}</td>
+        ${c.tel?`<a class="btn btn-sm btn-ghost" href="tel:${c.tel.replace(/[^0-9+]/g,'')}" title="Sună">📞</a>`:''}
+        <button class="btn btn-sm btn-ghost" onclick="openModalAt(${c.id},'script')" title="Script apel">📜</button>
+        <button class="btn btn-sm btn-ghost" onclick="openModalAt(${c.id},'email')" title="Template email">✉️</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -1446,6 +1452,16 @@ function openModal(id) {
   updateScriptPreview();
 
   document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openModalAt(id, section) {
+  openModal(id);
+  setTimeout(() => {
+    const target = section === 'email'
+      ? document.getElementById('m-email-select')
+      : document.getElementById('m-script-select');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
 }
 
 function renderCallLog(crm) {
