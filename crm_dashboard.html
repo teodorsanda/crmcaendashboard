@@ -1413,7 +1413,7 @@ function openModal(id) {
   // Populate email templates dropdown
   const emailTemplates = getEmailTemplateByTier(c.tier);
   const emailSelect = document.getElementById('m-email-select');
-  emailSelect.innerHTML = emailTemplates.templates.map((t, i) =>
+  emailSelect.innerHTML = emailTemplates.map((t, i) =>
     `<option value="${i}">${t.name}</option>`
   ).join('');
   emailSelect.value = 0;
