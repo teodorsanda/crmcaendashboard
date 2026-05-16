@@ -364,6 +364,12 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
           <option value="free">Email gratuit</option>
           <option value="no">Fără email</option>
         </select>
+        <select id="f-perpage" onchange="changePageSize()">
+          <option value="10">10 pe pagină</option>
+          <option value="20">20 pe pagină</option>
+          <option value="50" selected>50 pe pagină</option>
+          <option value="100">100 pe pagină</option>
+        </select>
         <span class="filter-count" id="filter-count">— firme</span>
       </div>
       <div class="table-wrap">
@@ -1174,6 +1180,15 @@ function renderPagination() {
 function goPage(p) {
   const pages = Math.ceil(tableState.filtered.length/tableState.perPage);
   tableState.page = Math.max(1, Math.min(pages, p));
+  renderTableRows();
+  renderPagination();
+  document.querySelector('.content').scrollTop = 0;
+}
+
+function changePageSize() {
+  const newSize = parseInt(document.getElementById('f-perpage').value, 10);
+  tableState.perPage = newSize;
+  tableState.page = 1;
   renderTableRows();
   renderPagination();
   document.querySelector('.content').scrollTop = 0;
