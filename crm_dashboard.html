@@ -234,6 +234,46 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#d4d4d8;border-radius:99px}
 ::-webkit-scrollbar-thumb:hover{background:#a1a1aa}
+
+/* ── Bulk Bar ── */
+.bulk-bar{background:var(--accent);color:#fff;padding:8px 14px;display:none;align-items:center;gap:10px;font-size:13px;font-weight:500;flex-shrink:0}
+.bulk-bar.visible{display:flex}
+.bulk-bar .btn{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35);color:#fff;font-size:12px}
+.bulk-bar .btn:hover{background:rgba(255,255,255,.35)}
+
+/* ── Callback rows ── */
+tr.cb-overdue>td{background:#fff1f1 !important}
+tr.cb-today>td{background:#fffbeb !important}
+.cb-pill{display:inline-block;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:600;vertical-align:middle;margin-left:4px;white-space:nowrap}
+.cb-overdue-pill{background:#fecaca;color:#dc2626}
+.cb-today-pill{background:#fde68a;color:#92400e}
+.cb-future-pill{background:#dbeafe;color:#1d4ed8}
+
+/* ── Multi-contact ── */
+.contact-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;margin-bottom:4px;font-size:12px}
+.contact-item .ci-name{font-weight:600;min-width:100px}
+.contact-item .ci-role{color:var(--muted);min-width:70px}
+.contact-add-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;margin-top:8px}
+.contact-add-grid input{padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:var(--bg);color:var(--txt)}
+
+/* ── Email log ── */
+.email-entry{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:var(--bg);border-radius:5px;margin-bottom:4px;font-size:12px}
+.email-entry .ee-name{font-weight:500}
+.email-entry .ee-date{color:var(--muted);font-size:11px}
+
+/* ── CSV Import ── */
+.import-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center}
+.import-overlay.open{display:flex}
+.import-modal{background:var(--card);border-radius:12px;width:720px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.import-preview{margin-top:12px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:6px}
+.import-preview table{width:100%;border-collapse:collapse;font-size:11px}
+.import-preview th{background:#f4f4f5;padding:4px 8px;text-align:left;font-size:10px;color:var(--muted);position:sticky;top:0}
+.import-preview td{padding:4px 8px;border-bottom:1px solid var(--border)}
+.import-preview tr.dup-row td{background:#fef2f2}
+
+/* ── Checkbox ── */
+input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
+th input[type=checkbox]{display:block;margin:auto}
 </style>
 </head>
 <body>
@@ -284,6 +324,7 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
       <div class="topbar-title">Tabel Prospecți</div>
       <div class="topbar-actions">
         <button class="btn btn-sm" onclick="resetFilters()">↺ Reset</button>
+        <button class="btn btn-sm" onclick="openImport()">📥 Import CSV</button>
         <button class="btn btn-sm btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
       </div>
     </div>
@@ -364,6 +405,12 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
           <option value="free">Email gratuit</option>
           <option value="no">Fără email</option>
         </select>
+        <select id="f-callback" onchange="applyFilters()">
+          <option value="">Callback: Toate</option>
+          <option value="today">📅 Azi</option>
+          <option value="overdue">🔴 Întârziate</option>
+          <option value="set">⏰ Cu callback</option>
+        </select>
         <select id="f-perpage" onchange="changePageSize()">
           <option value="10">10 pe pagină</option>
           <option value="20">20 pe pagină</option>
@@ -372,10 +419,18 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
         </select>
         <span class="filter-count" id="filter-count">— firme</span>
       </div>
+      <div class="bulk-bar" id="bulk-bar">
+        <span id="bulk-count">0 selectate</span>
+        <button class="btn btn-sm" onclick="bulkChangeStage()">↗ Schimbă status</button>
+        <button class="btn btn-sm" onclick="bulkMarkCalled()">📞 Marchează apelat</button>
+        <button class="btn btn-sm" onclick="bulkExportCSV()">⬇ Export selecție</button>
+        <button class="btn btn-sm" style="margin-left:auto" onclick="clearSelection()">✕ Anulează</button>
+      </div>
       <div class="table-wrap">
         <table id="main-table">
           <thead>
             <tr>
+              <th style="width:32px"><input type="checkbox" id="th-select-all" onchange="toggleSelectAll(this.checked)" title="Selectează tot"></th>
               <th style="width:40px">#</th>
               <th onclick="sortBy('n')" id="th-n">Firmă ↕</th>
               <th onclick="sortBy('j')" id="th-j">Județ ↕</th>
@@ -592,6 +647,27 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
         <div class="modal-section-title">Note</div>
         <textarea class="notes" id="m-notes" placeholder="Note despre firmă, persoană de contact, observații…" oninput="autoSaveNotes()"></textarea>
       </div>
+      <!-- Callback -->
+      <div class="modal-section">
+        <div class="modal-section-title">⏰ Callback Programat</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="m-callback-date" style="padding:5px 9px;border:1px solid var(--border);border-radius:5px;font-size:13px;flex:1;min-width:140px">
+          <button class="btn btn-sm btn-primary" onclick="saveCallback()">Salvează</button>
+          <button class="btn btn-sm btn-ghost" onclick="clearCallback()">Șterge</button>
+        </div>
+        <div id="m-callback-status" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+      </div>
+      <!-- Contacts -->
+      <div class="modal-section">
+        <div class="modal-section-title">👥 Persoane de Contact</div>
+        <div id="m-contacts-list"></div>
+        <div class="contact-add-grid">
+          <input type="text" id="ci-name" placeholder="Nume">
+          <input type="text" id="ci-role" placeholder="Funcție">
+          <input type="text" id="ci-phone" placeholder="Telefon">
+          <button class="btn btn-sm btn-primary" onclick="addContact()">+</button>
+        </div>
+      </div>
       <!-- Email Templates -->
       <div class="modal-section">
         <div class="modal-section-title">📧 Draft Email</div>
@@ -599,7 +675,11 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
           <option value="">Selectează template...</option>
         </select>
         <textarea id="m-email-preview" readonly style="width:100%;height:200px;padding:8px;border:1px solid #ddd;border-radius:4px;font-family:monospace;font-size:12px;background:#f9f9f9;"></textarea>
-        <button class="btn btn-sm btn-primary" onclick="copyEmailTemplate()" style="margin-top:8px;width:100%;">📋 Copy to Clipboard</button>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-sm btn-primary" onclick="copyEmailTemplate()" style="flex:1">📋 Copiază</button>
+          <button class="btn btn-sm" onclick="logEmailSent()" style="flex:1">✉️ Marchează trimis</button>
+        </div>
+        <div id="m-email-log" style="margin-top:8px"></div>
       </div>
       <!-- Outreach Script -->
       <div class="modal-section">
@@ -620,6 +700,28 @@ textarea.notes:focus{outline:none;border-color:var(--accent)}
         <button class="btn btn-sm btn-danger" onclick="markLost()">❌ Pierdut</button>
         <button class="btn btn-sm btn-primary" onclick="markWon()">✅ Câștigat</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- CSV Import Modal -->
+<div class="import-overlay" id="import-overlay" onclick="closeImportOnBg(event)">
+  <div class="import-modal" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="font-size:16px;font-weight:700">📥 Import Firme CSV</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeImport()">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Format așteptat (primul rând = header):<br><code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px">Firmă, Județ, Localitate, Telefon, Email, Website, Contact, Angajați, CA, CAEN, Tier</code></p>
+    <textarea id="import-csv-text" style="width:100%;height:150px;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:monospace;font-size:12px;resize:vertical" placeholder="Lipește textul CSV aici…"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <input type="file" id="import-file" accept=".csv,.txt" style="display:none" onchange="readImportFile(this)">
+      <button class="btn btn-sm" onclick="document.getElementById('import-file').click()">📎 Upload fișier</button>
+      <button class="btn btn-sm btn-primary" onclick="previewImport()">👁 Previzualizare</button>
+    </div>
+    <div class="import-preview" id="import-preview"></div>
+    <div id="import-actions" style="display:none;margin-top:12px;gap:8px;align-items:center">
+      <button class="btn btn-sm btn-primary" onclick="confirmImport()">✅ Importă</button>
+      <span id="import-summary" style="font-size:12px;color:var(--muted)"></span>
     </div>
   </div>
 </div>
@@ -1036,8 +1138,12 @@ function saveCRM() {
   updateSidebarStats();
 }
 function getCRM(id) {
-  if (!CRM[id]) CRM[id] = {stage:0, notes:'', calls:[], tags:[]};
-  return CRM[id];
+  if (!CRM[id]) CRM[id] = {stage:0, notes:'', calls:[], tags:[], cb:null, contacts:[], emails:[]};
+  const r = CRM[id];
+  if (!r.contacts) r.contacts = [];
+  if (!r.emails)   r.emails   = [];
+  if (!r.cb)       r.cb       = null;
+  return r;
 }
 function setStage(id, stage) {
   getCRM(id).stage = stage;
@@ -1059,14 +1165,14 @@ function switchView(name) {
 
 // ════ TABLE VIEW ════
 function applyFilters() {
-  const search = (document.getElementById('f-search').value||'').toLowerCase();
-  const tier   = document.getElementById('f-tier').value;
-  const stage  = document.getElementById('f-stage').value;
-  const judet  = document.getElementById('f-judet').value;
-  const phone  = document.getElementById('f-phone').value;
-  const email  = document.getElementById('f-email').value;
-
-  console.log('[applyFilters] START - COMPANIES.length:', COMPANIES.length, 'Filters:', {search:search||'(none)', tier:tier||'(none)', stage:stage||'(none)', judet:judet||'(none)', phone:phone||'(none)', email:email||'(none)'});
+  const search   = (document.getElementById('f-search').value||'').toLowerCase();
+  const tier     = document.getElementById('f-tier').value;
+  const stage    = document.getElementById('f-stage').value;
+  const judet    = document.getElementById('f-judet').value;
+  const phone    = document.getElementById('f-phone').value;
+  const email    = document.getElementById('f-email').value;
+  const callback = document.getElementById('f-callback').value;
+  const today    = new Date().toISOString().slice(0,10);
 
   tableState.filtered = COMPANIES.filter(c => {
     const crm = getCRM(c.id);
@@ -1078,8 +1184,11 @@ function applyFilters() {
     if (email==='custom' && c.et!=='custom_domain') return false;
     if (email==='free'   && c.et!=='free_email')    return false;
     if (email==='no'     && c.et!=='no_email')      return false;
+    if (callback === 'set'     && !crm.cb) return false;
+    if (callback === 'today'   && crm.cb !== today) return false;
+    if (callback === 'overdue' && (!crm.cb || crm.cb >= today)) return false;
     if (search) {
-      const hay = (c.n+c.j+c.loc+c.caen).toLowerCase();
+      const hay = (c.n+c.j+c.loc+c.caen+(c.ct||'')).toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -1117,7 +1226,7 @@ function renderTableRows() {
   const tbody = document.getElementById('tbl-body');
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="11" class="tbl-empty">Nicio firmă nu corespunde filtrelor selectate.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="tbl-empty">Nicio firmă nu corespunde filtrelor selectate.</td></tr>';
     return;
   }
 
@@ -1125,12 +1234,24 @@ function renderTableRows() {
     const crm = getCRM(c.id);
     const st  = STAGES[crm.stage];
     const rowN = start+i+1;
+    const today   = new Date().toISOString().slice(0,10);
+    const cbDate  = crm.cb || null;
+    const cbClass = cbDate ? (cbDate < today ? 'cb-overdue' : cbDate === today ? 'cb-today' : '') : '';
+    let cbPill = '';
+    if (cbDate) {
+      if (cbDate < today)      cbPill = `<span class="cb-pill cb-overdue-pill">⏰ ${cbDate}</span>`;
+      else if (cbDate===today) cbPill = `<span class="cb-pill cb-today-pill">📅 Azi</span>`;
+      else                     cbPill = `<span class="cb-pill cb-future-pill">📅 ${cbDate}</span>`;
+    }
     const telHtml = c.tel ? `<a href="tel:${c.tel.replace(/[^0-9+]/g,'')}">${c.tel}</a>` : '<span class="td-muted">—</span>';
     const emHtml  = c.em  ? `<a href="mailto:${c.em}" title="${c.em}" style="color:var(--accent);text-decoration:none;font-size:12px">${c.em.length>28?c.em.slice(0,26)+'…':c.em}</a>` : '<span class="td-muted">—</span>';
-    const ctHtml  = c.ct  ? `<span style="font-size:12px">${esc(c.ct)}</span>` : '<span class="td-muted">—</span>';
-    return `<tr>
+    const allContacts = [c.ct, ...(crm.contacts||[]).map(x=>x.name)].filter(Boolean);
+    const ctHtml  = allContacts.length ? `<span style="font-size:12px">${esc(allContacts[0])}${allContacts.length>1?` <span class="td-muted">+${allContacts.length-1}</span>`:''}</span>` : '<span class="td-muted">—</span>';
+    const isSel   = selectedIds.has(c.id);
+    return `<tr class="${cbClass}" data-id="${c.id}">
+      <td style="text-align:center"><input type="checkbox" ${isSel?'checked':''} onchange="toggleSelect(${c.id},this.checked)"></td>
       <td class="td-muted" style="font-size:11px">${rowN}</td>
-      <td><span class="td-name" onclick="openModal(${c.id})" title="${esc(c.n)}">${esc(c.n.length>35?c.n.slice(0,33)+'…':c.n)}</span></td>
+      <td><span class="td-name" onclick="openModal(${c.id})" title="${esc(c.n)}">${esc(c.n.length>35?c.n.slice(0,33)+'…':c.n)}</span>${cbPill}</td>
       <td class="td-muted">${c.j}</td>
       <td class="td-tel">${telHtml}</td>
       <td>${emHtml}</td>
@@ -1223,10 +1344,11 @@ function filterByStage(stageId) {
 }
 
 function resetFilters() {
-  ['f-search','f-tier','f-stage','f-judet','f-phone','f-email'].forEach(id => {
+  ['f-search','f-tier','f-stage','f-judet','f-phone','f-email','f-callback'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  clearSelection();
   applyFilters();
 }
 
@@ -1450,6 +1572,17 @@ function openModal(id) {
   // Update previews
   updateEmailPreview();
   updateScriptPreview();
+
+  // Callback
+  const cbInput = document.getElementById('m-callback-date');
+  cbInput.value = crm.cb || '';
+  renderCallbackStatus(crm);
+
+  // Contacts
+  renderContactsList(crm);
+
+  // Email log
+  renderEmailLog(crm);
 
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -1750,15 +1883,336 @@ function copyOutreachScript() {
   toast('Script copied to clipboard!');
 }
 
+// ════ BULK SELECTION ════
+let selectedIds = new Set();
+
+function toggleSelect(id, checked) {
+  if (checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateBulkBar();
+}
+
+function toggleSelectAll(checked) {
+  const start = (tableState.page-1)*tableState.perPage;
+  const pageRows = tableState.filtered.slice(start, start+tableState.perPage);
+  pageRows.forEach(c => checked ? selectedIds.add(c.id) : selectedIds.delete(c.id));
+  renderTableRows();
+  updateBulkBar();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  const cb = document.getElementById('th-select-all');
+  if (cb) cb.checked = false;
+  renderTableRows();
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const cnt = document.getElementById('bulk-count');
+  if (selectedIds.size > 0) {
+    bar.classList.add('visible');
+    cnt.textContent = `${selectedIds.size} selectate`;
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function bulkChangeStage() {
+  const stageNames = STAGES.map((s,i)=>`${i}: ${s.icon} ${s.label}`).join('\n');
+  const input = prompt(`Alege status nou (0-${STAGES.length-1}):\n${stageNames}`);
+  const stage = parseInt(input, 10);
+  if (isNaN(stage) || stage < 0 || stage >= STAGES.length) return;
+  selectedIds.forEach(id => setStage(id, stage));
+  toast(`${selectedIds.size} firme → ${STAGES[stage].label}`);
+  clearSelection();
+  applyFilters();
+}
+
+function bulkMarkCalled() {
+  const ts = Date.now();
+  selectedIds.forEach(id => {
+    const crm = getCRM(id);
+    crm.calls.push({outcome:'nr', note:'Bulk log', ts});
+    if (crm.stage === 0) crm.stage = 1;
+  });
+  saveCRM();
+  toast(`${selectedIds.size} firme marcate apelate`);
+  clearSelection();
+  applyFilters();
+}
+
+function bulkExportCSV() {
+  const ids = [...selectedIds];
+  const rows = COMPANIES.filter(c => ids.includes(c.id));
+  const header = 'Firmă,Județ,Localitate,Telefon,Email,Website,Contact,Angajați,CA,CAEN,Tier,Status';
+  const lines = rows.map(c => {
+    const crm = getCRM(c.id);
+    const stage = STAGES[crm.stage]?.label || '';
+    return [c.n,c.j,c.loc,c.tel,c.em,c.web,c.ct,c.sal,c.ca,c.caen,c.tier,stage]
+      .map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',');
+  });
+  const csv = [header,...lines].join('\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `export-selectie-${Date.now()}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast(`${rows.length} firme exportate`);
+}
+
+// ════ CALLBACK SCHEDULER ════
+function saveCallback() {
+  const date = document.getElementById('m-callback-date').value;
+  if (!date) { toast('Selectează o dată'); return; }
+  const crm = getCRM(modalId);
+  crm.cb = date;
+  saveCRM();
+  renderCallbackStatus(crm);
+  renderTableRows();
+  toast(`Callback setat: ${date}`);
+}
+
+function clearCallback() {
+  const crm = getCRM(modalId);
+  crm.cb = null;
+  saveCRM();
+  document.getElementById('m-callback-date').value = '';
+  renderCallbackStatus(crm);
+  renderTableRows();
+  toast('Callback șters');
+}
+
+function renderCallbackStatus(crm) {
+  const el = document.getElementById('m-callback-status');
+  if (!el) return;
+  if (!crm.cb) { el.textContent = 'Niciun callback setat.'; return; }
+  const today = new Date().toISOString().slice(0,10);
+  if (crm.cb < today)      el.innerHTML = `<span style="color:#dc2626">⏰ Întârziat — era programat pe ${crm.cb}</span>`;
+  else if (crm.cb===today) el.innerHTML = `<span style="color:#92400e">📅 Programat azi</span>`;
+  else                     el.innerHTML = `<span style="color:#1d4ed8">📅 Programat: ${crm.cb}</span>`;
+}
+
+// ════ MULTI-CONTACT ════
+function renderContactsList(crm) {
+  const el = document.getElementById('m-contacts-list');
+  if (!el) return;
+  const contacts = crm.contacts || [];
+  if (!contacts.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Nicio persoană adăugată.</div>'; return; }
+  el.innerHTML = contacts.map((ct,i) => `
+    <div class="contact-item">
+      <span class="ci-name">${esc(ct.name)}</span>
+      <span class="ci-role">${esc(ct.role||'—')}</span>
+      <span style="flex:1;color:var(--accent);font-size:12px">${ct.phone?`<a href="tel:${ct.phone}" style="color:var(--accent);text-decoration:none">${esc(ct.phone)}</a>`:''}</span>
+      <button class="btn btn-sm btn-ghost" onclick="removeContact(${i})" style="padding:2px 6px;font-size:11px">✕</button>
+    </div>`).join('');
+}
+
+function addContact() {
+  const name  = document.getElementById('ci-name').value.trim();
+  const role  = document.getElementById('ci-role').value.trim();
+  const phone = document.getElementById('ci-phone').value.trim();
+  if (!name) { toast('Introdu un nume'); return; }
+  const crm = getCRM(modalId);
+  crm.contacts.push({name, role, phone});
+  saveCRM();
+  renderContactsList(crm);
+  ['ci-name','ci-role','ci-phone'].forEach(id => document.getElementById(id).value='');
+  toast('Contact adăugat');
+}
+
+function removeContact(idx) {
+  const crm = getCRM(modalId);
+  crm.contacts.splice(idx, 1);
+  saveCRM();
+  renderContactsList(crm);
+}
+
+// ════ EMAIL LOG ════
+function logEmailSent() {
+  const select = document.getElementById('m-email-select');
+  const name = select.options[select.selectedIndex]?.text || 'Template';
+  if (!select.value && select.value !== 0) { toast('Selectează un template mai întâi'); return; }
+  const crm = getCRM(modalId);
+  crm.emails.push({name, ts: Date.now()});
+  saveCRM();
+  renderEmailLog(crm);
+  toast('Email marcat ca trimis');
+}
+
+function renderEmailLog(crm) {
+  const el = document.getElementById('m-email-log');
+  if (!el) return;
+  const emails = crm.emails || [];
+  if (!emails.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Emailuri trimise:</div>' +
+    emails.slice().reverse().map(e =>
+      `<div class="email-entry">
+        <span class="ee-name">✉️ ${esc(e.name)}</span>
+        <span class="ee-date">${new Date(e.ts).toLocaleDateString('ro-RO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+      </div>`
+    ).join('');
+}
+
+// ════ CSV IMPORT ════
+let importRows = [];
+
+function openImport() {
+  document.getElementById('import-overlay').classList.add('open');
+  document.getElementById('import-csv-text').value = '';
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('import-actions').style.display = 'none';
+  importRows = [];
+}
+
+function closeImport() {
+  document.getElementById('import-overlay').classList.remove('open');
+}
+
+function closeImportOnBg(e) {
+  if (e.target === document.getElementById('import-overlay')) closeImport();
+}
+
+function readImportFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('import-csv-text').value = e.target.result;
+    previewImport();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i=0;i<line.length;i++) {
+    const ch = line[i];
+    if (ch==='"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
+    else if (ch===',' && !inQ) { result.push(cur.trim()); cur=''; }
+    else cur+=ch;
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function previewImport() {
+  const text = document.getElementById('import-csv-text').value.trim();
+  if (!text) { toast('Niciun date de importat'); return; }
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  const hasHeader = isNaN(parseCSVLine(lines[0])[7]);
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+  const existingNames = new Set(COMPANIES.map(c=>c.n.toLowerCase().trim()));
+  const existingPhones = new Set(COMPANIES.map(c=>c.tel||'').filter(Boolean));
+  importRows = dataLines.map(line => {
+    const f = parseCSVLine(line);
+    const name = f[0]||''; const tel = f[3]||'';
+    const isDup = existingNames.has(name.toLowerCase().trim()) || (tel && existingPhones.has(tel));
+    return { n:name, j:f[1]||'', loc:f[2]||'', tel, em:f[4]||'', web:f[5]||'',
+             ct:f[6]||'', sal:parseInt(f[7])||0, ca:parseInt(f[8])||0,
+             caen:f[9]||'', tier:parseInt(f[10])||1, dup:isDup };
+  }).filter(r=>r.n);
+  const dups = importRows.filter(r=>r.dup).length;
+  const preview = document.getElementById('import-preview');
+  preview.innerHTML = `<table><thead><tr><th>Firmă</th><th>Județ</th><th>Tel</th><th>Email</th><th>Tier</th><th>Status</th></tr></thead><tbody>` +
+    importRows.slice(0,50).map(r =>
+      `<tr class="${r.dup?'dup-row':''}"><td>${esc(r.n)}</td><td>${esc(r.j)}</td><td>${esc(r.tel)}</td><td>${esc(r.em)}</td><td>T${r.tier}</td><td>${r.dup?'⚠️ Duplicat':'✅ Nou'}</td></tr>`
+    ).join('') + (importRows.length>50?`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:8px">…și încă ${importRows.length-50} rânduri</td></tr>`:'') +
+    '</tbody></table>';
+  const actEl = document.getElementById('import-actions');
+  actEl.style.display = 'flex';
+  document.getElementById('import-summary').textContent =
+    `${importRows.length} rânduri, ${dups} duplicate (marcate roșu — vor fi sărite)`;
+}
+
+function confirmImport() {
+  const newOnes = importRows.filter(r=>!r.dup);
+  if (!newOnes.length) { toast('Nicio firmă nouă de importat'); return; }
+  const maxId = Math.max(...COMPANIES.map(c=>c.id), -1);
+  newOnes.forEach((r,i) => {
+    const ca = r.ca; let cad = '';
+    if (ca>=1e9) cad=(ca/1e9).toFixed(1)+'B';
+    else if (ca>=1e6) cad=(ca/1e6).toFixed(1)+'M';
+    else if (ca>=1e3) cad=(ca/1e3).toFixed(0)+'K';
+    else cad=String(ca);
+    const et = r.em.includes('@') ? (r.em.split('@')[1]?.includes('gmail')||r.em.includes('yahoo')||r.em.includes('hotmail') ? 'free_email' : 'custom_domain') : 'no_email';
+    COMPANIES.push({id:maxId+1+i, tier:r.tier||1, n:r.n, j:r.j, loc:r.loc,
+      tel:r.tel, em:r.em, web:r.web, ct:r.ct, sal:r.sal, ca:r.ca, cad, caen:r.caen, et});
+  });
+  closeImport();
+  renderTable();
+  updateSidebarStats();
+  toast(`${newOnes.length} firme importate cu succes!`, 3500);
+}
+
+// ════ ACTIVITY DASHBOARD (Stats view enhancement) ════
+function getActivityStats() {
+  const today = new Date().toISOString().slice(0,10);
+  const weekAgo = new Date(Date.now()-7*864e5).toISOString().slice(0,10);
+  let callsToday=0, callsWeek=0, emailsWeek=0;
+  const stageCount = STAGES.map(()=>0);
+  Object.values(CRM).forEach(crm => {
+    (crm.calls||[]).forEach(cl => {
+      const d = new Date(cl.ts).toISOString().slice(0,10);
+      if (d===today) callsToday++;
+      if (d>=weekAgo) callsWeek++;
+    });
+    (crm.emails||[]).forEach(e => {
+      const d = new Date(e.ts).toISOString().slice(0,10);
+      if (d>=weekAgo) emailsWeek++;
+    });
+    stageCount[crm.stage||0]++;
+  });
+  const overdue = Object.values(CRM).filter(crm=>crm.cb && crm.cb<today).length;
+  const dueToday = Object.values(CRM).filter(crm=>crm.cb===today).length;
+  return {callsToday, callsWeek, emailsWeek, stageCount, overdue, dueToday};
+}
+
+// ════ KEYBOARD SHORTCUTS ════
+let kbFocusIdx = -1;
+
+document.addEventListener('keydown', e => {
+  const modalOpen = document.getElementById('modal-overlay').classList.contains('open');
+  const importOpen = document.getElementById('import-overlay').classList.contains('open');
+  const tag = document.activeElement?.tagName;
+  const typing = tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT';
+
+  if (e.key==='Escape') {
+    if (modalOpen) { closeModal(); return; }
+    if (importOpen) { closeImport(); return; }
+    if (selectedIds.size) { clearSelection(); return; }
+  }
+
+  if (modalOpen || importOpen || typing) return;
+
+  if (e.key==='j' || e.key==='ArrowDown') {
+    e.preventDefault();
+    kbFocusIdx = Math.min(kbFocusIdx+1, tableState.filtered.slice((tableState.page-1)*tableState.perPage,(tableState.page)*tableState.perPage).length-1);
+    highlightKbRow();
+  } else if (e.key==='k' || e.key==='ArrowUp') {
+    e.preventDefault();
+    kbFocusIdx = Math.max(kbFocusIdx-1, 0);
+    highlightKbRow();
+  } else if (e.key==='Enter' && kbFocusIdx>=0) {
+    const start=(tableState.page-1)*tableState.perPage;
+    const c = tableState.filtered[start+kbFocusIdx];
+    if (c) openModal(c.id);
+  } else if (e.key==='/' ) {
+    e.preventDefault();
+    document.getElementById('f-search')?.focus();
+  }
+});
+
+function highlightKbRow() {
+  document.querySelectorAll('#tbl-body tr').forEach((tr,i)=>{
+    tr.style.outline = i===kbFocusIdx ? '2px solid var(--accent)' : '';
+  });
+}
+
 // ════ INIT ════
 loadCRM();
 renderTable();
 updateSidebarStats();
-
-// Keyboard shortcuts
-document.addEventListener('keydown', e=>{
-  if (e.key==='Escape') closeModal();
-});
 </script>
 </body>
 </html>
